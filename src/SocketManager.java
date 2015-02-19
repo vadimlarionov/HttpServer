@@ -1,9 +1,10 @@
 import java.io.*;
 import java.net.Socket;
 import java.net.URLDecoder;
-import java.nio.ByteBuffer;
-import java.nio.*;
-import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Date;
+
 
 /**
  * Created by Vadim on 15.02.15.
@@ -13,7 +14,7 @@ public class SocketManager implements Runnable {
     private InputStream inputStream;
     private OutputStream outputStream;
 
-    private int bufferSize = 8192;
+    private static final String ROOT = "/home/vadim";
 
     SocketManager(Socket socket) throws IOException {
         this.socket = socket;
@@ -22,18 +23,23 @@ public class SocketManager implements Runnable {
     }
 
     public void run() {
-        System.out.println("Method run()");
         try {
             String request = readInputHeaders();
-
-            String requestMethod = getRequestMethod(request);
-            System.out.println("Request Method: " + requestMethod);
 
             String requestPath = getRequestPath(request);
             System.out.println("Request Path: " + requestPath);
 
-            String str = "<html><body><h1>Simple Http Server</h1></body></html>\n";
-            writeResponse(str);
+            if (requestPath.equals("/"))
+                requestPath = "/index.html";
+
+            File file = new File(ROOT, requestPath);
+            if (!file.exists()) {
+                System.err.println("FUUUU! " + ROOT + requestPath);
+                requestPath = "/404.html";
+                file = new File(ROOT, requestPath);
+            }
+
+            writeResponse(file, requestPath);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -52,7 +58,6 @@ public class SocketManager implements Runnable {
         while (true) {
             String header = bufferedReader.readLine();
             request += header;
-            System.out.println(header);
             if (header == null || header.trim().length() == 0) {
                 break;
             }
@@ -60,14 +65,14 @@ public class SocketManager implements Runnable {
         return request;
     }
 
-    private void writeResponse(String message) throws IOException {
-        String headers = "HTTP/1.1 200 OK\r\n" +
-                "Server: LarionovServer\r\n" +
-                "Content-Type: text/html\r\n" +
-                "Content-Length: " + message.length() + "\r\n" +
-                "Connection: close\r\n\r\n";
-        String response = headers + message;
+    private void writeResponse(File context, String requestPath) throws IOException {
+        String headers = makeHeaders(200, context.length());
+        String response = headers;
+
         outputStream.write(response.getBytes());
+        Path path = context.toPath();
+        byte[] data = Files.readAllBytes(path);
+        outputStream.write(data);
         outputStream.flush();
     }
 
@@ -89,11 +94,23 @@ public class SocketManager implements Runnable {
         }
 
         int queryIndex = path.indexOf("?");
-        System.out.println(queryIndex);
         if (queryIndex != -1)
             path = path.substring(0, queryIndex);
 
         return path;
+    }
+
+
+    private String makeHeaders(int statusCode, long contextLength) {
+        Date date = new Date();
+        String headers = "HTTP/1.1 " + statusCode + " OK\r\n" +
+                "Server: LarionovServer\r\n" +
+                "Content-Type: text/html\r\n" +
+                "Content-Length: " + contextLength + "\r\n" +
+                "Connection: close\r\n" +
+                "Date: " + date + "\r\n\r\n";
+
+        return headers;
     }
 
 }
