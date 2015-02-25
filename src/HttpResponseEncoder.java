@@ -1,9 +1,7 @@
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 
-import java.util.Date;
 
 /**
  * Created by vadim on 21.02.15.

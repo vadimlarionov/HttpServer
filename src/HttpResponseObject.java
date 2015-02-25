@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by vadim on 23.02.15.
@@ -52,32 +53,40 @@ public class HttpResponseObject {
     private String getResponseHeader() {
         StringBuilder headers = new StringBuilder();
 
-        headers.append(
-                "HTTP/1.1 " + statusCode + " OK\r\n" +
-                "Server: LarionovServer\r\n" +
-                "Content-Type: text/html\r\n");
+        headers.append("HTTP/1.1 ").append(getResponseCode()).append("\r\n");
+        headers.append("Server: LarionovServer\r\n");
+        headers.append("Content-Type: ").append(getMimeType()).append("\r\n");
+        headers.append("Content-Length: ").append(getContentLength()).append("\r\n");
+        headers.append("Connection: close\r\n");
+        headers.append("Date: ").append(new Date()).append("\r\n");
 
-        if (context != null)
-            headers.append("Content-Length: " + context.length + "\r\n");
-
-        headers.append(
-                "Connection: close\r\n" +
-                "Date: " + (new Date()) + "\r\n\r\n");
-
+        headers.append("\r\n");
         return headers.toString();
     }
 
+    private String getResponseCode() {
+        return statusCode + " " + Constants.getResponseCodeValue(statusCode);
+    }
+    private String getMimeType() {
+        String path = pathToFile.toString();
+        String fileType = path.substring(path.indexOf(".") + 1).toLowerCase();
+        System.out.println("fileType: " + fileType);
+        String mimeType = Constants.getMimeType(fileType);
+        return mimeType;
+    }
+
+    private int getContentLength() {
+        return context != null ? context.length : 0;
+    }
+
     public ByteBuf getResponse() {
-        // Проверка Path
-
-        // Формируем context
-
-        // Формируем headers
         String headers = getResponseHeader();
 
         // Формируем response и возвращаем
         ByteBuf response;
-        System.err.println("Status code: " + statusCode);
+        System.err.println("Headers");
+        System.out.println(headers);
+
         if (statusCode == 200) {
             response = Unpooled.copiedBuffer(headers.getBytes(), context);
         }
@@ -88,4 +97,5 @@ public class HttpResponseObject {
 
         return response;
     }
+
 }
