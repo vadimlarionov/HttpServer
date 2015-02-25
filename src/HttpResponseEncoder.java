@@ -17,7 +17,6 @@ public class HttpResponseEncoder extends ChannelOutboundHandlerAdapter {
 
         //ctx.write(message, promise);
         super.write(ctx, msg, promise);
-        System.out.println("O_O 2");
     }
 
 

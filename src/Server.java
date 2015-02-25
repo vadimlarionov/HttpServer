@@ -6,6 +6,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.stream.ChunkedWriteHandler;
 
 
 public class Server {
@@ -28,11 +29,12 @@ public class Server {
                  public void initChannel(SocketChannel channel) throws Exception {
                      channel.pipeline().addLast(new HttpRequestDecoder())
                              .addLast(new HttpResponseEncoder())
+                             .addLast(new ChunkedWriteHandler())
                              .addLast(new ServerHandler());
                  }
              })
              .option(ChannelOption.SO_BACKLOG, 128)
-             .childOption(ChannelOption.SO_KEEPALIVE, true);
+             .childOption(ChannelOption.SO_KEEPALIVE, false); // Or true?
 
             ChannelFuture f = b.bind(port).sync();
             f.channel().closeFuture().sync();
@@ -48,34 +50,3 @@ public class Server {
         new Server(port).run();
     }
 }
-
-
-
-
-
-
-
-
-
-
-//import java.io.IOException;
-//import java.net.ServerSocket;
-//import java.net.Socket;
-//
-//
-//public class Server {
-//
-//    public static void main(String[] args) throws IOException {
-//        System.out.println("Simple Http Server!");
-//
-//        int port = 8030;
-//        ServerSocket serverSocket = new ServerSocket(port);
-//
-//        while (true) {
-//            Socket socket = serverSocket.accept();
-//            System.err.println("Client accepted");
-//            new Thread(new SocketManager(socket)).start();
-//        }
-//
-//    }
-//}
