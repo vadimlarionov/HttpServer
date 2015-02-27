@@ -19,6 +19,7 @@ public abstract class Constants {
         responseCodeMap.put(400, "Bad Request");
         responseCodeMap.put(403, "Forbidden");
         responseCodeMap.put(404, "Not Found");
+        responseCodeMap.put(405, "Method Not Allowed");
     }
     private static void initMimeTypeMap() {
         mimeTypeMap = new ConcurrentHashMap<>();
@@ -34,7 +35,7 @@ public abstract class Constants {
 
         // Image
         mimeTypeMap.put("gif", "image/gif");
-        mimeTypeMap.put("jpg", "image/jpg");
+        mimeTypeMap.put("jpg", "image/jpeg");
         mimeTypeMap.put("jpeg", "image/jpeg");
         mimeTypeMap.put("pjpeg", "image/pjpeg");
         mimeTypeMap.put("png", "image/png");
@@ -49,7 +50,7 @@ public abstract class Constants {
 
         // Application
         mimeTypeMap.put("json", "application/json");
-        mimeTypeMap.put("swf", "application/vnd.adobe.flash-movie");
+        mimeTypeMap.put("swf", "application/x-shockwave-flash");
         mimeTypeMap.put("pdf", "application/pdf");
     }
 

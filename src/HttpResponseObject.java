@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by vadim on 23.02.15.
@@ -16,20 +15,22 @@ public class HttpResponseObject {
     private Path pathToFile = null;
     private byte[] context = null;
     private int statusCode = -1;
+    private String requestMethod;
 
-    private static final String DOCUMENT_ROOT = "/home/vadim";
+    private static final String DOCUMENT_ROOT = "/home/vadim/http-test-suite";
 
     public HttpResponseObject() {}
-    public HttpResponseObject(String requestPath) throws IOException {
+    public HttpResponseObject(String requestPath, String requestMethod) throws IOException {
 
         if (requestPath.equals("/"))
             requestPath = "/index.html";
 
         // Вынести в отдельный метод
         Path pathToFile = Paths.get(DOCUMENT_ROOT, requestPath);
-        System.out.println("LALALA: " + pathToFile.toString());
         this.pathToFile = pathToFile; // ! ! !
-        if (!pathToFile.getParent().toString().equals(DOCUMENT_ROOT)) {
+
+        if (!pathToFile.getParent().toString().contains(DOCUMENT_ROOT)) {
+            System.err.println(pathToFile.getParent().toString());
             context = null;
             statusCode = 403;
         }
@@ -37,16 +38,26 @@ public class HttpResponseObject {
             if (!Files.isDirectory(pathToFile)) {
                 context = Files.readAllBytes(pathToFile);
                 statusCode = 200;
-            }
-            else {
+            } else {
                 // Это директория. 403 or 404?
                 context = null;
                 statusCode = 403;
             }
-        }
-        else {
+        } else {
+            if (pathToFile.toString().endsWith("index.html"))
+                statusCode = 403;
+            else
+                statusCode = 404;
+
+            System.err.print(pathToFile);
             context = null;
-            statusCode = 404;
+        }
+
+        // Отдельно должно быть
+        this.requestMethod = requestMethod.toUpperCase();
+        if (!this.requestMethod.equals("GET") && !this.requestMethod.equals("HEAD")) {
+            statusCode = 405;
+            context = null;
         }
     }
 
@@ -68,14 +79,22 @@ public class HttpResponseObject {
         return statusCode + " " + Constants.getResponseCodeValue(statusCode);
     }
     private String getMimeType() {
+        if (statusCode >= 400) {
+            context = (getResponseCode() + "\r\n") .getBytes();
+            return "text/html";
+        }
+
         String path = pathToFile.toString();
-        String fileType = path.substring(path.indexOf(".") + 1).toLowerCase();
+
+        String fileType = path.substring(path.lastIndexOf(".") + 1).toLowerCase();
         System.out.println("fileType: " + fileType);
         String mimeType = Constants.getMimeType(fileType);
         return mimeType;
     }
 
     private int getContentLength() {
+//        if (requestMethod.equals("HEAD"))
+//            return 0;
         return context != null ? context.length : 0;
     }
 
@@ -87,12 +106,15 @@ public class HttpResponseObject {
         System.err.println("Headers");
         System.out.println(headers);
 
-        if (statusCode == 200) {
-            response = Unpooled.copiedBuffer(headers.getBytes(), context);
+        if (context != null) {
+            if (requestMethod.equals("HEAD"))
+                response = Unpooled.copiedBuffer(headers.getBytes());
+            else
+                response = Unpooled.copiedBuffer(headers.getBytes(), context);
         }
-        else {
+        else
             response = Unpooled.copiedBuffer(headers.getBytes());
-        }
+
         response.retain();
 
         return response;
