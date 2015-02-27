@@ -29,7 +29,6 @@ public class Server {
                  public void initChannel(SocketChannel channel) throws Exception {
                      channel.pipeline()
                              .addLast(new HttpRequestDecoder())
-                            // .addLast(new HttpResponseEncoder())
                              .addLast(new ChunkedWriteHandler())
                              .addLast(new ServerHandler());
                  }
