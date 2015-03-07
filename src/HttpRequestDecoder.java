@@ -1,44 +1,34 @@
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
-
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-
-import java.nio.file.*;
 
 /**
  * Created by vadim on 23.02.15.
  */
-public class HttpRequestDecoder extends ChannelDuplexHandler {
+public class HttpRequestDecoder extends ChannelInboundHandlerAdapter {
     private static final String LOG_TAG = HttpRequestDecoder.class.getName();
-    private static final String DOCUMENT_ROOT = "/home/vadim/http-test-suite";
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        //super.channelRead(ctx, msg);
         System.out.println(LOG_TAG + " channelRead()");
 
-        // Не самый лучший вариант
         StringBuilder request = new StringBuilder();
         ByteBuf in = (ByteBuf) msg;
-        while (in.isReadable()) {
-            request.append((char) in.readByte());
+        char ch = 1;
+        while (in.isReadable() && ch != '\n') {
+            ch = (char) in.readByte();
+            request.append(ch);
         }
 
-        System.err.println(request);
         String requestMethod = getRequestMethod(request.toString());
         String requestPath = getRequestPath(request.toString());
         if (requestPath.endsWith("/"))
             requestPath += "index.html";
 
-        Path pathToFile = Paths.get(DOCUMENT_ROOT, requestPath);
-        System.err.println("PATH: " + pathToFile.toString());
-
-        HttpResponseObject httpResponseObject = new HttpResponseObject(requestPath, requestMethod);
-        ctx.fireChannelRead(httpResponseObject.getResponse());
-        //super.channelRead(ctx, byteBuf);
+        HttpRequest httpRequest = new HttpRequest(requestMethod, requestPath);
+        ctx.fireChannelRead(httpRequest);
     }
 
 
@@ -66,11 +56,4 @@ public class HttpRequestDecoder extends ChannelDuplexHandler {
         return request.substring(0, request.indexOf(" "));
     }
 
-    @Override
-    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-        System.out.println(LOG_TAG + "Write!");
-
-        //ctx.write(message, promise);
-        super.write(ctx, msg, promise);
-    }
 }

@@ -1,18 +1,19 @@
-
 import io.netty.bootstrap.ServerBootstrap;
-
 import io.netty.channel.*;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.stream.ChunkedWriteHandler;
 
-
+/**
+ * Created by vadim on 15.02.15.
+ */
 public class Server {
+    private String inetHost;
     private int port;
 
-    public Server(int port) {
+    public Server(String inetHost, int port) {
+        this.inetHost = inetHost;
         this.port = port;
     }
 
@@ -29,14 +30,14 @@ public class Server {
                  public void initChannel(SocketChannel channel) throws Exception {
                      channel.pipeline()
                              .addLast(new HttpRequestDecoder())
-                             .addLast(new ChunkedWriteHandler())
                              .addLast(new ServerHandler());
                  }
              })
              .option(ChannelOption.SO_BACKLOG, 128)
              .childOption(ChannelOption.SO_KEEPALIVE, false); // Or true?
 
-            ChannelFuture f = b.bind(port).sync();
+
+            ChannelFuture f = b.bind(inetHost, port).sync();
             f.channel().closeFuture().sync();
         }
         finally {
@@ -46,7 +47,14 @@ public class Server {
     }
 
     public static void main(String[] args) throws Exception {
+        String inetHost = "127.0.0.1";
         int port = 8030;
-        new Server(port).run();
+        String documentRoot = "/home/vadim";
+
+        Settings.setInetHost(inetHost);
+        Settings.setPort(port);
+        Settings.setDocumentRoot(documentRoot);
+
+        new Server(Settings.getInetHost(), Settings.getPort()).run();
     }
 }

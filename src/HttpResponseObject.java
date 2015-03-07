@@ -17,9 +17,9 @@ public class HttpResponseObject {
     private int statusCode = -1;
     private String requestMethod;
 
-    private static final String DOCUMENT_ROOT = "/home/vadim/http-test-suite";
+    private static String DOCUMENT_ROOT = Settings.getDocumentRoot();
 
-    public HttpResponseObject() {}
+
     public HttpResponseObject(String requestPath, String requestMethod) throws IOException {
 
         if (requestPath.equals("/"))
@@ -76,7 +76,7 @@ public class HttpResponseObject {
     }
 
     private String getResponseCode() {
-        return statusCode + " " + Constants.getResponseCodeValue(statusCode);
+        return statusCode + " " + ResponseCodes.getResponseCodeValue(statusCode);
     }
     private String getMimeType() {
         if (statusCode >= 400) {
@@ -88,7 +88,7 @@ public class HttpResponseObject {
 
         String fileType = path.substring(path.lastIndexOf(".") + 1).toLowerCase();
         System.out.println("fileType: " + fileType);
-        String mimeType = Constants.getMimeType(fileType);
+        String mimeType = MimeTypes.getMimeType(fileType);
         return mimeType;
     }
 
@@ -120,4 +120,9 @@ public class HttpResponseObject {
         return response;
     }
 
+
+    private void setRequestMethod(String requestMethod) {
+        this.requestMethod = requestMethod.toUpperCase();
+
+    }
 }
