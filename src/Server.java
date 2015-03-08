@@ -49,7 +49,7 @@ public class Server {
     public static void main(String[] args) throws Exception {
         String inetHost = "127.0.0.1";
         int port = 8030;
-        String documentRoot = "/home/vadim";
+        String documentRoot = "/home/vadim/http-test-suite";
 
         Settings.setInetHost(inetHost);
         Settings.setPort(port);

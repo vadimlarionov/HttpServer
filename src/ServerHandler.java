@@ -1,5 +1,6 @@
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,20 +20,55 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
     public void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) throws IOException {
         System.out.println(LOG_TAG + " channelRead0() ");
 
-        // Предполагается, что URI корректный
-        String uri = httpRequest.getUri();
+        if (!httpRequest.isValid()) {
+            sendError(ctx, ResponseCodes.BAD_REQUEST);
+            return;
+        }
 
-        Path pathToFile = Paths.get(Settings.getDocumentRoot(), uri);
-        // Здесь должна быть проверка файла
+        String method = httpRequest.getMethod();
+        if (!method.equals("GET") && !method.equals("HEAD")) {
+            sendError(ctx, ResponseCodes.METHOD_NOT_ALLOWED);
+            return;
+        }
 
-        System.err.println(pathToFile.toString());
-        byte[] context = Files.readAllBytes(pathToFile);
+        String uri = correctURI(httpRequest.getUri());
+        System.err.println("URI " + uri);
+
+        if (uri.equals("/"))
+            uri = "/index.html";
+
+
+        String documentRoot = Settings.getDocumentRoot();
+        byte[] context = null;
+
+        Path pathToFile = Paths.get(documentRoot, uri);
+        System.err.println("pathToFile: " + pathToFile.toString());
+        // Проверка файла
+
+        if (Files.isDirectory(pathToFile)) {
+            pathToFile = Paths.get(documentRoot, uri, "/index.html");
+            if (!Files.exists(pathToFile)) {
+                sendError(ctx, ResponseCodes.FORBIDDEN);
+                return;
+            }
+        }
+
+        if (Files.exists(pathToFile) && !Files.isHidden(pathToFile)) {
+            context = Files.readAllBytes(pathToFile);
+        }
+        else {
+            sendError(ctx, ResponseCodes.NOT_FOUND);
+            return;
+        }
+
+        int contextLength = context != null ? context.length : 0;
 
         HttpResponse response = new HttpResponse(200);
-        response.setContext(context);
+        if (method.equals("GET"))
+            response.setContext(context);
         response.setHeader("Server", "LarionovServer");
         response.setHeader("Content-Type", getContentType(uri));
-        response.setHeader("Content-Length", String.valueOf(context.length));
+        response.setHeader("Content-Length", String.valueOf(contextLength));
         response.setHeader("Connection", "close");
         response.setHeader("Date: ", (new Date()).toString());
 
@@ -51,4 +87,14 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
         return MimeTypes.getMimeType(uri.substring(uri.lastIndexOf(".") + 1).toLowerCase());
     }
 
+    private void sendError(ChannelHandlerContext ctx, int responseCode) {
+        HttpResponse responseError = new HttpResponse(responseCode);
+        responseError.createErrorResponse();
+        ByteBuf byteBuf = responseError.getResponse();
+        ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
+    }
+
+    private String correctURI(String uri) {
+        return uri.replace("/..", "");
+    }
 }

@@ -1,6 +1,7 @@
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 
@@ -23,27 +24,31 @@ public class HttpRequestDecoder extends ChannelInboundHandlerAdapter {
         }
 
         String requestMethod = getRequestMethod(request.toString());
-        String requestPath = getRequestPath(request.toString());
-        if (requestPath.endsWith("/"))
-            requestPath += "index.html";
+        String requestPath = null;
+        boolean errors = false;
+        try {
+            requestPath = getRequestPath(request.toString());
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            errors = true;
+        }
 
         HttpRequest httpRequest = new HttpRequest(requestMethod, requestPath);
+        if (errors)
+            httpRequest.setValid(false);
         ctx.fireChannelRead(httpRequest);
     }
 
 
-    private String getRequestPath(String request) {
+    private String getRequestPath(String request) throws UnsupportedEncodingException {
         int beginPath = request.indexOf(" ") + 1;
         int endPath = request.indexOf(" ", beginPath);
 
         // М.б. есть что-то лучше?
         // Class StringEncoder http://netty.io/4.0/api/io/netty/handler/codec/string/StringEncoder.html
         String path = request.substring(beginPath, endPath);
-        try {
-            path = URLDecoder.decode(path, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
+        path = URLDecoder.decode(path, "UTF-8");
 
         int queryIndex = path.indexOf("?");
         if (queryIndex != -1)
