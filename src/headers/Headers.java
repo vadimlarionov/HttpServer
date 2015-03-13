@@ -1,3 +1,5 @@
+package headers;
+
 /**
  * Created by vadim on 07.03.15.
  */
@@ -15,7 +17,6 @@ public class Headers {
     public void setHeader(String key, String value) {
         headers.append(key).append(": ").append(value).append("\r\n");
     }
-
 
     @Override
     public String toString() {

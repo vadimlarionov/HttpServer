@@ -1,5 +1,12 @@
+package handlers;
+
+import headers.MimeTypes;
+import headers.ResponseCodes;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
+import request.HttpRequest;
+import response.HttpResponse;
+import server.Settings;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,12 +21,9 @@ import java.util.Date;
  */
 
 public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
-    private static final String LOG_TAG = ServerHandler.class.getName();
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) throws IOException {
-        System.out.println(LOG_TAG + " channelRead0() ");
-
         if (!httpRequest.isValid()) {
             sendError(ctx, ResponseCodes.BAD_REQUEST);
             return;
@@ -32,19 +36,10 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
         }
 
         String uri = correctURI(httpRequest.getUri());
-        System.err.println("URI " + uri);
-
-        if (uri.equals("/"))
-            uri = "/index.html";
-
-
         String documentRoot = Settings.getDocumentRoot();
-        byte[] context = null;
+        byte[] context;
 
         Path pathToFile = Paths.get(documentRoot, uri);
-        System.err.println("pathToFile: " + pathToFile.toString());
-        // Проверка файла
-
         if (Files.isDirectory(pathToFile)) {
             pathToFile = Paths.get(documentRoot, uri, "/index.html");
             if (!Files.exists(pathToFile)) {
@@ -70,7 +65,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
         response.setHeader("Content-Type", getContentType(uri));
         response.setHeader("Content-Length", String.valueOf(contextLength));
         response.setHeader("Connection", "close");
-        response.setHeader("Date: ", (new Date()).toString());
+        response.setHeader("Date", (new Date()).toString());
 
         ByteBuf buf = response.getResponse();
         ctx.writeAndFlush(buf).addListener(ChannelFutureListener.CLOSE);

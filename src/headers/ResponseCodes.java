@@ -1,3 +1,5 @@
+package headers;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -21,7 +23,11 @@ public class ResponseCodes {
 
     private static void initResponseCodeMap() {
         responseCodeMap = new ConcurrentHashMap<>();
+
+        // 2xx
         responseCodeMap.put(OK, "OK");
+
+        // 4xx
         responseCodeMap.put(BAD_REQUEST, "Bad Request");
         responseCodeMap.put(FORBIDDEN, "Forbidden");
         responseCodeMap.put(NOT_FOUND, "Not Found");

@@ -1,3 +1,7 @@
+package response;
+
+import headers.Headers;
+import headers.ResponseCodes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -10,7 +14,6 @@ public class HttpResponse {
     private int responseCode;
     private String responseCodeMsg;
     private Headers headers;
-
     private byte[] context = null;
 
     public HttpResponse(int responseCode) {
@@ -33,15 +36,15 @@ public class HttpResponse {
         this.context = context;
     }
 
+
     public ByteBuf getResponse() {
         byte[] separator = "\r\n".getBytes();
         ByteBuf response;
         if (context != null) {
-            response = Unpooled.copiedBuffer(headers.toString().getBytes(), separator, context);
+            response = Unpooled.wrappedBuffer(headers.toString().getBytes(), separator, context);
         }
-        // Для else нужен separator?
         else {
-            response = Unpooled.copiedBuffer(headers.toString().getBytes(), separator);
+            response = Unpooled.wrappedBuffer(headers.toString().getBytes(), separator);
         }
 
         return response;
@@ -58,11 +61,11 @@ public class HttpResponse {
             context = buf.toString().getBytes();
         }
 
-        headers.setHeader("Server", "LarionovServer");
+        headers.setHeader("server", "LarionovServer");
         headers.setHeader("Content-Type", "text/html");
         headers.setHeader("Content-Length", String.valueOf(context.length));
         headers.setHeader("Connection", "close");
-        headers.setHeader("Date: ", (new Date()).toString());
+        headers.setHeader("Date", (new Date()).toString());
     }
 
 }

@@ -1,6 +1,9 @@
+package handlers;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import request.HttpRequest;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -9,12 +12,9 @@ import java.net.URLDecoder;
  * Created by vadim on 23.02.15.
  */
 public class HttpRequestDecoder extends ChannelInboundHandlerAdapter {
-    private static final String LOG_TAG = HttpRequestDecoder.class.getName();
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        System.out.println(LOG_TAG + " channelRead()");
-
         StringBuilder request = new StringBuilder();
         ByteBuf in = (ByteBuf) msg;
         char ch = 1;
@@ -30,7 +30,7 @@ public class HttpRequestDecoder extends ChannelInboundHandlerAdapter {
             requestPath = getRequestPath(request.toString());
         }
         catch (Exception e) {
-            e.printStackTrace();
+            // e.printStackTrace();
             errors = true;
         }
 
@@ -45,8 +45,6 @@ public class HttpRequestDecoder extends ChannelInboundHandlerAdapter {
         int beginPath = request.indexOf(" ") + 1;
         int endPath = request.indexOf(" ", beginPath);
 
-        // М.б. есть что-то лучше?
-        // Class StringEncoder http://netty.io/4.0/api/io/netty/handler/codec/string/StringEncoder.html
         String path = request.substring(beginPath, endPath);
         path = URLDecoder.decode(path, "UTF-8");
 

@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Class-Path: netty-all-4.0.25.Final.jar commons-cli-1.2.jar
+Main-Class: server.Server
+

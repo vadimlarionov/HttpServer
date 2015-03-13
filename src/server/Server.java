@@ -1,3 +1,7 @@
+package server;
+
+import handlers.HttpRequestDecoder;
+import handlers.ServerHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.ChannelInitializer;
@@ -33,11 +37,12 @@ public class Server {
                              .addLast(new ServerHandler());
                  }
              })
-             .option(ChannelOption.SO_BACKLOG, 128)
-             .childOption(ChannelOption.SO_KEEPALIVE, false); // Or true?
+             .option(ChannelOption.SO_BACKLOG, 128);          // Максимальное кол-во requests в очереди
 
-
+            // Start the server
             ChannelFuture f = b.bind(inetHost, port).sync();
+
+            // Ожидать, пока сервер сокета не будет закрыт
             f.channel().closeFuture().sync();
         }
         finally {
@@ -70,7 +75,7 @@ public class Server {
         }
         catch (Exception e) {
             HelpFormatter helpFormatter = new HelpFormatter();
-            helpFormatter.printHelp(" ", posixOptions);
+            helpFormatter.printHelp("java -jar httpd.jar -r <document root> <options>", posixOptions);
             return;
         }
 
