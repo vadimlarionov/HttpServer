@@ -17,11 +17,17 @@ public class HttpRequestDecoder extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         StringBuilder request = new StringBuilder();
         ByteBuf in = (ByteBuf) msg;
-        char ch = 1;
-        while (in.isReadable() && ch != '\n') {
-            ch = (char) in.readByte();
-            request.append(ch);
+//        char ch = 1;
+//        while (in.isReadable() && ch != '\n') {
+//            ch = (char) in.readByte();
+//            request.append(ch);
+//        }
+        while (in.isReadable()) {
+            byte[] bytes = new byte[in.readableBytes()];
+            in = in.readBytes(bytes);
+            request.append(new String(bytes));
         }
+        in.release();
 
         String requestMethod = getRequestMethod(request.toString());
         String requestPath = null;

@@ -8,6 +8,7 @@ import request.HttpRequest;
 import response.HttpResponse;
 import server.Settings;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,7 +38,6 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
 
         String uri = correctURI(httpRequest.getUri());
         String documentRoot = Settings.getDocumentRoot();
-        byte[] context;
 
         Path pathToFile = Paths.get(documentRoot, uri);
         if (Files.isDirectory(pathToFile)) {
@@ -48,19 +48,23 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
             }
         }
 
+        FileRegion region;
         if (Files.exists(pathToFile) && !Files.isHidden(pathToFile)) {
-            context = Files.readAllBytes(pathToFile);
+            FileInputStream in = new FileInputStream(pathToFile.toString());
+            region = new DefaultFileRegion(
+                    in.getChannel(), 0, pathToFile.toFile().length()
+            );
         }
         else {
             sendError(ctx, ResponseCodes.NOT_FOUND);
             return;
         }
 
-        int contextLength = context != null ? context.length : 0;
+        long contextLength = pathToFile.toFile().length();
 
         HttpResponse response = new HttpResponse(200);
-        if (method.equals("GET"))
-            response.setContext(context);
+//        if (method.equals("GET"))
+//            response.setContext(context);
         response.setHeader("Server", "LarionovServer");
         response.setHeader("Content-Type", getContentType(uri));
         response.setHeader("Content-Length", String.valueOf(contextLength));
@@ -68,7 +72,13 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
         response.setHeader("Date", (new Date()).toString());
 
         ByteBuf buf = response.getResponse();
-        ctx.writeAndFlush(buf).addListener(ChannelFutureListener.CLOSE);
+        ctx.writeAndFlush(buf);
+        ctx.writeAndFlush(region).addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                future.addListener(ChannelFutureListener.CLOSE);
+            }
+        });
     }
 
     @Override
