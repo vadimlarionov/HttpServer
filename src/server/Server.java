@@ -3,6 +3,7 @@ package server;
 import handlers.HttpRequestDecoder;
 import handlers.ServerHandler;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -37,12 +38,14 @@ public class Server {
                              .addLast(new ServerHandler());
                  }
              })
-             .option(ChannelOption.SO_BACKLOG, 128);          // Максимальное кол-во requests в очереди
+            .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+            .option(ChannelOption.SO_BACKLOG, 128)          // Максимальное кол-во requests в очереди
+            .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 
             // Start the server
             ChannelFuture f = b.bind(inetHost, port).sync();
 
-            // Ожидать, пока сервер сокета не будет закрыт
+            // Ожидать, пока сокета сервера не будет закрыт
             f.channel().closeFuture().sync();
         }
         finally {

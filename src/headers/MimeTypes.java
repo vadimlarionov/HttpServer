@@ -7,10 +7,12 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MimeTypes {
     private static ConcurrentHashMap<String, String> mimeTypeMap;
+    private static final String defaultMimeType = "text/txt";
 
     static {
         initMimeTypeMap();
     }
+
     private MimeTypes() {}
 
     private static void initMimeTypeMap() {
@@ -39,15 +41,16 @@ public class MimeTypes {
         mimeTypeMap.put("ogg", "video/ogg");
         mimeTypeMap.put("webm", "video/webm");
         mimeTypeMap.put("flv", "video/x-flv");
+        mimeTypeMap.put("avi", "video/avi");
 
         // Application
         mimeTypeMap.put("json", "application/json");
         mimeTypeMap.put("swf", "application/x-shockwave-flash");
         mimeTypeMap.put("pdf", "application/pdf");
+        mimeTypeMap.put("iso", "application/x-zip-compressed");
     }
 
     public static String getMimeType(String fileType) {
-        String mimeType = mimeTypeMap.get(fileType);
-        return mimeType != null ? mimeType : "text/html";
+        return mimeTypeMap.getOrDefault(fileType, defaultMimeType);
     }
 }

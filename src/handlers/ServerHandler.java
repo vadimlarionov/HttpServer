@@ -1,12 +1,14 @@
 package handlers;
 
 import headers.MimeTypes;
+import headers.ResponseCode;
 import headers.ResponseCodes;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import request.HttpRequest;
 import response.HttpResponse;
 import server.Settings;
+import templates.TemplateGenerator;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -23,8 +25,13 @@ import java.util.Date;
 
 public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
 
+    /*
+    В Netty 5.0 метод переименован в messageReceived(...).
+    Вызывается для каждого объекта типа HttpRequest из pipeline
+     */
     @Override
     public void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) throws IOException {
+        HttpResponse response;
         if (!httpRequest.isValid()) {
             sendError(ctx, ResponseCodes.BAD_REQUEST);
             return;
@@ -60,24 +67,25 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
             return;
         }
 
-        long contextLength = pathToFile.toFile().length();
+        response = new HttpResponse(ResponseCodes.OK);
+        response.getHeaders().setContentType(getContentType(uri));
+        response.getHeaders().setContentLength(region.count());
 
-        HttpResponse response = new HttpResponse(200);
-//        if (method.equals("GET"))
-//            response.setContext(context);
-        response.setHeader("Server", "LarionovServer");
-        response.setHeader("Content-Type", getContentType(uri));
-        response.setHeader("Content-Length", String.valueOf(contextLength));
-        response.setHeader("Connection", "close");
-        response.setHeader("Date", (new Date()).toString());
 
-        ByteBuf buf = response.getResponse();
-        ctx.writeAndFlush(buf);
-        ctx.writeAndFlush(region).addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                future.addListener(ChannelFutureListener.CLOSE);
-            }
+        if (method.equals("HEAD")) {
+            sendHeadResponse(ctx, response);
+            return;
+        }
+
+        Channel channel = ctx.channel();
+        channel.eventLoop().execute(() -> {
+            channel.write(response.toByteBuf());
+            channel.writeAndFlush(region).addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    future.addListener(ChannelFutureListener.CLOSE);
+                }
+            });
         });
     }
 
@@ -92,10 +100,17 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
         return MimeTypes.getMimeType(uri.substring(uri.lastIndexOf(".") + 1).toLowerCase());
     }
 
-    private void sendError(ChannelHandlerContext ctx, int responseCode) {
+    private void sendError(ChannelHandlerContext ctx, ResponseCode responseCode) {
         HttpResponse responseError = new HttpResponse(responseCode);
-        responseError.createErrorResponse();
-        ByteBuf byteBuf = responseError.getResponse();
+        responseError.setContext(TemplateGenerator.generate(responseCode));
+        responseError.getHeaders().setContentType(getContentType("fake.txt"));
+        responseError.getHeaders().setContentLength(responseError.getContext().length);
+        ByteBuf byteBuf = responseError.toByteBuf();
+        ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
+    }
+
+    private void sendHeadResponse(ChannelHandlerContext ctx, HttpResponse response) {
+        ByteBuf byteBuf = response.toByteBuf();
         ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
     }
 

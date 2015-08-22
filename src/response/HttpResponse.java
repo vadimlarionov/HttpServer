@@ -1,71 +1,58 @@
 package response;
 
 import headers.Headers;
-import headers.ResponseCodes;
+import headers.ResponseCode;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.PooledByteBufAllocator;
 
-import java.util.Date;
 
 /**
  * Created by vadim on 07.03.15.
  */
 public class HttpResponse {
-    private int responseCode;
-    private String responseCodeMsg;
+    private ResponseCode responseCode;
     private Headers headers;
     private byte[] context = null;
 
-    public HttpResponse(int responseCode) {
+    public HttpResponse(ResponseCode responseCode) {
         this.responseCode = responseCode;
-        responseCodeMsg = ResponseCodes.getResponseCodeValue(responseCode);
-        headers = new Headers(responseCode, responseCodeMsg);
+        headers = new Headers(responseCode.getCode(), responseCode.getCodeTitle());
     }
 
-    public int getResponseCode() {
-        return responseCode;
-    }
-    public String getResponseCodeMsg() {
-        return responseCodeMsg;
+    public void setContext(byte[] context) {
+        this.context = context;
     }
 
     public void setHeader(String key, String value) {
         headers.setHeader(key, value);
     }
-    public void setContext(byte[] context) {
-        this.context = context;
-    }
 
-
-    public ByteBuf getResponse() {
-        byte[] separator = "\r\n".getBytes();
+    public ByteBuf toByteBuf() {
+        byte[] separator = {'\r', '\n'};
+        int capacity = headers.toString().length() + separator.length;
+        PooledByteBufAllocator allocator = PooledByteBufAllocator.DEFAULT;
         ByteBuf response;
         if (context != null) {
-            response = Unpooled.wrappedBuffer(headers.toString().getBytes(), separator, context);
+            capacity += context.length;
+            response = allocator.directBuffer(capacity);
+            response.writeBytes(headers.toString().getBytes());
+            response.writeBytes(separator);
+            response.writeBytes(context);
         }
         else {
-            response = Unpooled.wrappedBuffer(headers.toString().getBytes(), separator);
+            response = allocator.directBuffer(capacity);
+            response.writeBytes(headers.toString().getBytes());
+            response.writeBytes(separator);
         }
 
         return response;
     }
 
-    public void createErrorResponse() {
-        if (context == null) {
-            StringBuilder buf = new StringBuilder();
-            buf.append("\r\n");
-            buf.append("<html><body><h3>");
-            buf.append(responseCode);
-            buf.append(". ").append(responseCodeMsg);
-            buf.append("</h3></body></html>");
-            context = buf.toString().getBytes();
-        }
-
-        headers.setHeader("server", "LarionovServer");
-        headers.setHeader("Content-Type", "text/html");
-        headers.setHeader("Content-Length", String.valueOf(context.length));
-        headers.setHeader("Connection", "close");
-        headers.setHeader("Date", (new Date()).toString());
+    public byte[] getContext() {
+        return context;
     }
 
+    public Headers getHeaders() {
+        return headers;
+    }
 }
