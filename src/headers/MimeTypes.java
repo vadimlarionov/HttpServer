@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MimeTypes {
     private static ConcurrentHashMap<String, String> mimeTypeMap;
-    private static final String defaultMimeType = "text/txt";
+    private static final String defaultMimeType = "text/html";
 
     static {
         initMimeTypeMap();
@@ -48,6 +48,10 @@ public class MimeTypes {
         mimeTypeMap.put("swf", "application/x-shockwave-flash");
         mimeTypeMap.put("pdf", "application/pdf");
         mimeTypeMap.put("iso", "application/x-zip-compressed");
+    }
+
+    public static String getDefaultMimeType() {
+        return defaultMimeType;
     }
 
     public static String getMimeType(String fileType) {

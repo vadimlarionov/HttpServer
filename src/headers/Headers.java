@@ -1,43 +1,41 @@
 package headers;
 
-import io.netty.handler.codec.http.HttpHeaders;
-import javafx.util.Pair;
-
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Created by vadim on 07.03.15.
  */
-public class Headers{
-    StringBuilder headers;
+public class Headers {
+    private int responseCode;
+    private String responseCodeTitle;
+    private HashMap<String, String> headersMap;
 
     public Headers(int responseCode, String responseCodeTitle) {
-        headers = new StringBuilder(1024);
-        headers
-                .append("HTTP/1.1 ")
-                .append(responseCode).append(" ")
-                .append(responseCodeTitle).append("\r\n")
-                .append("Connection: close\r\n")
-                .append("Server: LarionovServer\r\n")
-                .append("Date: ").append(new Date()).append("\r\n");
+        this.responseCode = responseCode;
+        this.responseCodeTitle = responseCodeTitle;
+        headersMap = new HashMap<>();
     }
 
-    public void setContentType(String contentType) {
-        headers.append("Content-Type: ").append(contentType).append("\r\n");
-    }
-
-    public void setContentLength(long contentLength) {
-        headers.append("Content-Length: ").append(contentLength).append("\r\n");
+    public void setDefaultHeaders() {
+        headersMap.put("Server", "LarionovServer");
+        headersMap.put("Date", (new Date()).toString());
+        headersMap.put("Connection", "close");
     }
 
     public void setHeader(String key, String value) {
-        headers.append(key).append(": ").append(value).append("\r\n");
+        headersMap.put(key, value);
     }
 
-    @Override
-    public String toString() {
-        return headers.toString();
+    public byte[] getHeaders() {
+        StringBuilder builder = new StringBuilder(128);
+        builder.append("HTTP/1.1 ").append(responseCode).append(" ")
+                .append(responseCodeTitle).append("\r\n");
+        for (Map.Entry<String, String> entry : headersMap.entrySet()) {
+            builder.append(entry.getKey()).append(": ")
+                    .append(entry.getValue()).append("\r\n");
+        }
+        return String.valueOf(builder).getBytes();
     }
-
 }

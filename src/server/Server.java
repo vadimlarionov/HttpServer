@@ -39,7 +39,7 @@ public class Server {
                  }
              })
             .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-            .option(ChannelOption.SO_BACKLOG, 128)          // Максимальное кол-во requests в очереди
+            //.option(ChannelOption.SO_BACKLOG, 256)          // Максимальное кол-во requests в очереди
             .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 
             // Start the server

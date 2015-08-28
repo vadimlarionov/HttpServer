@@ -1,5 +1,6 @@
 package handlers;
 
+import headers.AllowedMethods;
 import headers.MimeTypes;
 import headers.ResponseCode;
 import headers.ResponseCodes;
@@ -15,7 +16,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Date;
 
 /**
  * ServerHandler на основе HttpRequest формирует HttpResponse
@@ -38,7 +38,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
         }
 
         String method = httpRequest.getMethod();
-        if (!method.equals("GET") && !method.equals("HEAD")) {
+        if (!AllowedMethods.contains(method)) {
             sendError(ctx, ResponseCodes.METHOD_NOT_ALLOWED);
             return;
         }
@@ -68,12 +68,13 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
         }
 
         response = new HttpResponse(ResponseCodes.OK);
-        response.getHeaders().setContentType(getContentType(uri));
-        response.getHeaders().setContentLength(region.count());
-
+        response.getHeader().setDefaultHeaders();
+        response.getHeader().setHeader("Content-Type", getContentType(uri));
+        response.getHeader().setHeader("Content-Length", String.valueOf(region.count()));
 
         if (method.equals("HEAD")) {
-            sendHeadResponse(ctx, response);
+            ByteBuf byteBuf = response.toByteBuf();
+            ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
             return;
         }
 
@@ -103,14 +104,10 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
     private void sendError(ChannelHandlerContext ctx, ResponseCode responseCode) {
         HttpResponse responseError = new HttpResponse(responseCode);
         responseError.setContext(TemplateGenerator.generate(responseCode));
-        responseError.getHeaders().setContentType(getContentType("fake.txt"));
-        responseError.getHeaders().setContentLength(responseError.getContext().length);
+        responseError.getHeader().setDefaultHeaders();
+        responseError.getHeader().setHeader("Content-Type", MimeTypes.getDefaultMimeType());
+        responseError.getHeader().setHeader("Content-Length", String.valueOf(responseError.getContext().length));
         ByteBuf byteBuf = responseError.toByteBuf();
-        ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
-    }
-
-    private void sendHeadResponse(ChannelHandlerContext ctx, HttpResponse response) {
-        ByteBuf byteBuf = response.toByteBuf();
         ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
     }
 
