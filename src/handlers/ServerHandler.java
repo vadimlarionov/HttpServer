@@ -12,6 +12,7 @@ import server.Settings;
 import templates.TemplateGenerator;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,54 +31,89 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
     Вызывается для каждого объекта типа HttpRequest из pipeline
      */
     @Override
-    public void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) throws IOException {
-        HttpResponse response;
-        if (!httpRequest.isValid()) {
-            sendError(ctx, ResponseCodes.BAD_REQUEST);
-            return;
+    public void channelRead0(ChannelHandlerContext ctx, HttpRequest httpRequest) throws FileNotFoundException {
+        ResponseCode responseCode = getResponseCode(httpRequest);
+
+        if (responseCode == ResponseCodes.OK) {
+            String uri = httpRequest.getUri();
+            String documentRoot = Settings.getDocumentRoot();
+            Path pathToFile = Paths.get(documentRoot, uri);
+
+            FileInputStream in = new FileInputStream(pathToFile.toString());
+            FileRegion region = new DefaultFileRegion(
+                    in.getChannel(), 0, pathToFile.toFile().length()
+            );
+
+            HttpResponse response = new HttpResponse(responseCode);
+            response.getHeader().setDefaultHeaders()
+                    .setHeader("Content-Type", getContentType(uri))
+                    .setHeader("Content-Length", String.valueOf(region.count()));
+
+            if (httpRequest.getMethod().equals("HEAD")) {
+                sendResponse(ctx, response);
+                return;
+            }
+
+            sendResponse(ctx, response, region);
         }
 
-        String method = httpRequest.getMethod();
-        if (!AllowedMethods.contains(method)) {
-            sendError(ctx, ResponseCodes.METHOD_NOT_ALLOWED);
-            return;
+        else {
+            HttpResponse responseError = new HttpResponse(responseCode);
+            byte[] context = TemplateGenerator.generate(responseCode);
+            responseError.setContext(context);
+            responseError.getHeader().setDefaultHeaders()
+                    .setHeader("Content-Type", MimeTypes.getDefaultMimeType())
+                    .setHeader("Content-Length", String.valueOf(context.length));
+            sendResponse(ctx, responseError);
         }
+    }
 
-        String uri = correctURI(httpRequest.getUri());
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        // Close the connection when an exception is raised.
+        cause.printStackTrace();
+        ctx.close();
+    }
+
+    private ResponseCode getResponseCode(HttpRequest request) {
+        if (!request.isValid())
+            return ResponseCodes.BAD_REQUEST;
+
+        String method = request.getMethod();
+        if (!AllowedMethods.contains(method))
+            return ResponseCodes.METHOD_NOT_ALLOWED;
+
+        String uri = request.getUri();
         String documentRoot = Settings.getDocumentRoot();
 
         Path pathToFile = Paths.get(documentRoot, uri);
         if (Files.isDirectory(pathToFile)) {
-            pathToFile = Paths.get(documentRoot, uri, "/index.html");
-            if (!Files.exists(pathToFile)) {
-                sendError(ctx, ResponseCodes.FORBIDDEN);
-                return;
-            }
+            pathToFile = Paths.get(documentRoot, uri, Settings.INDEX);
+            if (!Files.exists(pathToFile))
+                return ResponseCodes.FORBIDDEN;
         }
 
-        FileRegion region;
-        if (Files.exists(pathToFile) && !Files.isHidden(pathToFile)) {
-            FileInputStream in = new FileInputStream(pathToFile.toString());
-            region = new DefaultFileRegion(
-                    in.getChannel(), 0, pathToFile.toFile().length()
-            );
+        try {
+            if (Files.exists(pathToFile) && !Files.isHidden(pathToFile))
+                return ResponseCodes.OK;
+            else
+                return ResponseCodes.NOT_FOUND;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseCodes.NOT_FOUND;
         }
-        else {
-            sendError(ctx, ResponseCodes.NOT_FOUND);
-            return;
-        }
+    }
 
-        response = new HttpResponse(ResponseCodes.OK);
-        response.getHeader().setDefaultHeaders();
-        response.getHeader().setHeader("Content-Type", getContentType(uri));
-        response.getHeader().setHeader("Content-Length", String.valueOf(region.count()));
+    private String getContentType(String uri) {
+        return MimeTypes.getMimeType(uri.substring(uri.lastIndexOf(".") + 1).toLowerCase());
+    }
 
-        if (method.equals("HEAD")) {
-            ByteBuf byteBuf = response.toByteBuf();
-            ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
-            return;
-        }
+    private void sendResponse(ChannelHandlerContext ctx, HttpResponse response) {
+        ByteBuf byteBuf = response.toByteBuf();
+        ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
+    }
 
+    private void sendResponse(ChannelHandlerContext ctx, HttpResponse response, FileRegion region) {
         Channel channel = ctx.channel();
         channel.eventLoop().execute(() -> {
             channel.write(response.toByteBuf());
@@ -88,30 +124,5 @@ public class ServerHandler extends SimpleChannelInboundHandler<HttpRequest> {
                 }
             });
         });
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        // Close the connection when an exception is raised.
-        cause.printStackTrace();
-        ctx.close();
-    }
-
-    private String getContentType(String uri) {
-        return MimeTypes.getMimeType(uri.substring(uri.lastIndexOf(".") + 1).toLowerCase());
-    }
-
-    private void sendError(ChannelHandlerContext ctx, ResponseCode responseCode) {
-        HttpResponse responseError = new HttpResponse(responseCode);
-        responseError.setContext(TemplateGenerator.generate(responseCode));
-        responseError.getHeader().setDefaultHeaders();
-        responseError.getHeader().setHeader("Content-Type", MimeTypes.getDefaultMimeType());
-        responseError.getHeader().setHeader("Content-Length", String.valueOf(responseError.getContext().length));
-        ByteBuf byteBuf = responseError.toByteBuf();
-        ctx.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
-    }
-
-    private String correctURI(String uri) {
-        return uri.replace("/..", "");
     }
 }

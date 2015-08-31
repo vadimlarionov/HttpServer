@@ -7,6 +7,7 @@ public class Settings {
     private static String inetHost = "127.0.0.1";
     private static int port = 80;
     private static String documentRoot = null;
+    public static final String INDEX = "/index.html";
 
     private Settings() {}
 

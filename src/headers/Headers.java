@@ -18,14 +18,16 @@ public class Headers {
         headersMap = new HashMap<>();
     }
 
-    public void setDefaultHeaders() {
+    public Headers setDefaultHeaders() {
         headersMap.put("Server", "LarionovServer");
         headersMap.put("Date", (new Date()).toString());
         headersMap.put("Connection", "close");
+        return this;
     }
 
-    public void setHeader(String key, String value) {
+    public Headers setHeader(String key, String value) {
         headersMap.put(key, value);
+        return this;
     }
 
     public byte[] getHeaders() {

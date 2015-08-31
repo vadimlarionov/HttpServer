@@ -35,7 +35,7 @@ public class HttpRequestDecoder extends ChannelInboundHandlerAdapter {
             errors = true;
         }
 
-        HttpRequest httpRequest = new HttpRequest(requestMethod, requestPath);
+        HttpRequest httpRequest = new HttpRequest(requestMethod, correctURI(requestPath));
         if (errors)
             httpRequest.setValid(false);
         ctx.fireChannelRead(httpRequest);
@@ -57,7 +57,10 @@ public class HttpRequestDecoder extends ChannelInboundHandlerAdapter {
     }
 
     private String getRequestMethod(String request) {
-        return request.substring(0, request.indexOf(" "));
+        return request.substring(0, request.indexOf(" ")).toUpperCase();
     }
 
+    private String correctURI(String uri) {
+        return uri.replace("/..", "");
+    }
 }

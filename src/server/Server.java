@@ -23,6 +23,16 @@ public class Server {
         this.port = port;
     }
 
+    public static void main(String[] args) throws Exception {
+        setSettings(args);
+
+        System.out.print("LarionovServer has been started at ");
+        System.out.println(Settings.getInetHost() + ":" + Settings.getPort());
+        System.out.println("Document root: " + Settings.getDocumentRoot());
+
+        new Server(Settings.getInetHost(), Settings.getPort()).run();
+    }
+
     public void run() throws Exception {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -54,7 +64,7 @@ public class Server {
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    private static void setSettings(String[] args) {
         String host = "127.0.0.1";
         int port = 80;
         String documentRoot = null;
@@ -85,9 +95,6 @@ public class Server {
         Settings.setInetHost(host);
         Settings.setPort(port);
         Settings.setDocumentRoot(documentRoot);
-
-        System.out.println("LarionovServer has been started at " + host + ":" + port);
-        new Server(Settings.getInetHost(), Settings.getPort()).run();
     }
 
     private static Options getPosixOptions() {
@@ -113,5 +120,4 @@ public class Server {
 
         return posixOptions;
     }
-
 }
