@@ -1,5 +1,7 @@
 package server;
 
+import java.net.SocketException;
+
 import handlers.HttpRequestDecoder;
 import handlers.ServerHandler;
 import io.netty.bootstrap.ServerBootstrap;
@@ -30,7 +32,12 @@ public class Server {
         System.out.println(Settings.getInetHost() + ":" + Settings.getPort());
         System.out.println("Document root: " + Settings.getDocumentRoot());
 
-        new Server(Settings.getInetHost(), Settings.getPort()).run();
+        try {
+            new Server(Settings.getInetHost(), Settings.getPort()).run();
+        } catch (SocketException e) {
+            System.out.printf("Access denied to %s:%d. Use root privileges or another port.\n",
+                    Settings.getInetHost(), Settings.getPort());
+        }
     }
 
     public void run() throws Exception {
@@ -57,8 +64,7 @@ public class Server {
 
             // Ожидать, пока сокета сервера не будет закрыт
             f.channel().closeFuture().sync();
-        }
-        finally {
+        } finally {
             workerGroup.shutdownGracefully();
             bossGroup.shutdownGracefully();
         }
@@ -89,6 +95,7 @@ public class Server {
         catch (Exception e) {
             HelpFormatter helpFormatter = new HelpFormatter();
             helpFormatter.printHelp("java -jar httpd.jar -r <document root> <options>", posixOptions);
+            System.exit(1);
             return;
         }
 
